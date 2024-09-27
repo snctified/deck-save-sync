@@ -1,0 +1,48 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Deck Save Sync configuration",
+    "description": "A configuration file for Deck Save Sync",
+    "type": "object",
+    "properties": {
+        "autoSync": {
+            "description": "Sync saves automatically on start",
+            "type": "boolean"
+        },
+        "games": {
+            "description": "Games whose saves should be synced",
+            "type": "array",
+            "uniqueItems": true,
+            "minItems": 1,
+            "items": {
+                "type":"object",
+                "properties": {
+                    "_id": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "name": {
+                        "description": "Name of the game",
+                        "type": "string"
+                    },
+                    "pcPath": {
+                        "description": "Path to the saves on PC",
+                        "type": "string"
+                    },
+                    "deckPath": {
+                        "description": "Path to the saves on Steam Deck",
+                        "type": "string"
+                    },
+                    "files": {
+                        "description": "List of files to sync, all files are synced if null",
+                        "type": ["array", "null"],
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "required": ["_id", "name", "pcPath", "deckPath", "files"]
+            }
+        }
+    },
+    "required": ["autoSync", "games"]
+}
