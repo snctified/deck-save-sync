@@ -1,0 +1,19 @@
+{
+    "autoSync": true,
+    "games": [
+        {
+            "_id": 0,
+            "name": "Dark Souls III",
+            "pcPath": "pathA",
+            "deckPath": "pathB",
+            "files": []
+        },
+        {
+            "_id": 1,
+            "name": "Elden Ring",
+            "pcPath": "pathC",
+            "deckPath": "pathD",
+            "files": []
+        }
+    ]
+}
