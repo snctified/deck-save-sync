@@ -1,19 +1,19 @@
 {
-    "autoSync": true,
+    "auto_sync": true,
     "games": [
         {
-            "_id": 0,
+            "id": 0,
             "name": "Dark Souls III",
-            "pcPath": "ds3_save_path_on_pc",
-            "deckPath": "ds3_save_path_on_deck",
+            "pc_path": "ds3_save_path_on_pc",
+            "deck_path": "ds3_save_path_on_deck",
             "files": []
         },
         {
-            "_id": 1,
+            "id": 1,
             "name": "Elden Ring",
-            "pcPath": "er_save_path_on_pc",
-            "deckPath": "er_save_path_on_deck",
-            "files": []
+            "pc_path": "er_save_path_on_pc",
+            "deck_path": "er_save_path_on_deck",
+            "files": ["toto", "titi", "tata"]
         }
     ]
 }

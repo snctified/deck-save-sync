@@ -4,7 +4,7 @@
     "description": "A configuration file for Deck Save Sync",
     "type": "object",
     "properties": {
-        "autoSync": {
+        "auto_sync": {
             "description": "Sync saves automatically on start",
             "type": "boolean"
         },
@@ -16,7 +16,7 @@
             "items": {
                 "type":"object",
                 "properties": {
-                    "_id": {
+                    "id": {
                         "type": "integer",
                         "minimum": 0
                     },
@@ -24,25 +24,25 @@
                         "description": "Name of the game",
                         "type": "string"
                     },
-                    "pcPath": {
+                    "pc_path": {
                         "description": "Path to the saves on PC",
                         "type": "string"
                     },
-                    "deckPath": {
+                    "deck_path": {
                         "description": "Path to the saves on Steam Deck",
                         "type": "string"
                     },
                     "files": {
                         "description": "List of files to sync, all files are synced if null",
-                        "type": ["array", "null"],
+                        "type": "array",
                         "items": {
                             "type": "string"
                         }
                     }
                 },
-                "required": ["_id", "name", "pcPath", "deckPath", "files"]
+                "required": ["id", "name", "pc_path", "deck_path", "files"]
             }
         }
     },
-    "required": ["autoSync", "games"]
+    "required": ["auto_sync", "games"]
 }
