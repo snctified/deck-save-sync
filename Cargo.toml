@@ -6,12 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-freya = "0.2"
-dioxus = { version = "0.5", features = ["macro", "hooks"], default-features = false }
 json = "0.12.4"
 jsonschema = "0.20.0"
 serde_json = "1.0.128"
 serde = "1.0.210"
 anyhow = "1.0.89"
 glob = "0.3.1"
-winres = "0.1.12"
+ssh2 = "0.9.4"
+rpassword = "7.3.1"
+chrono = "0.4.38"

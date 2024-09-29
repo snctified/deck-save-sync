@@ -1,15 +1,23 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "Deck Save Sync configuration",
-    "description": "A configuration file for Deck Save Sync",
+    "title": "Remote Sync configuration",
+    "description": "A configuration file for Remote Sync",
     "type": "object",
     "properties": {
         "auto_sync": {
-            "description": "Sync saves automatically on start",
+            "description": "Sync files automatically on start",
             "type": "boolean"
         },
-        "games": {
-            "description": "Games whose saves should be synced",
+        "remote": {
+            "description": "Remote hostname",
+            "type": "string"
+        },
+        "user": {
+            "description": "Username for the remote",
+            "type": "string"
+        },
+        "locations": {
+            "description": "Locations whose files should be synced",
             "type": "array",
             "uniqueItems": true,
             "minItems": 1,
@@ -21,28 +29,28 @@
                         "minimum": 0
                     },
                     "name": {
-                        "description": "Name of the game",
+                        "description": "Name of the location",
                         "type": "string"
                     },
-                    "pc_path": {
-                        "description": "Path to the saves on PC",
+                    "local_path": {
+                        "description": "Local path to the files",
                         "type": "string"
                     },
-                    "deck_path": {
-                        "description": "Path to the saves on Steam Deck",
+                    "remote_path": {
+                        "description": "Remote path to the files",
                         "type": "string"
                     },
                     "files": {
-                        "description": "List of files to sync, all files are synced if null",
+                        "description": "List of files to sync, all files are synced if empty",
                         "type": "array",
                         "items": {
                             "type": "string"
                         }
                     }
                 },
-                "required": ["id", "name", "pc_path", "deck_path", "files"]
+                "required": ["id", "name", "local_path", "remote_path", "files"]
             }
         }
     },
-    "required": ["auto_sync", "games"]
+    "required": ["auto_sync", "remote", "locations"]
 }

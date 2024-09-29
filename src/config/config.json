@@ -1,19 +1,21 @@
 {
     "auto_sync": true,
-    "games": [
+    "remote": "steamdeck",
+    "user": "deck",
+    "locations": [
         {
             "id": 0,
             "name": "Dark Souls III",
-            "pc_path": "ds3_save_path_on_pc",
-            "deck_path": "ds3_save_path_on_deck",
+            "local_path": "E:/NetworkFS/DS3Save/",
+            "remote_path": "/home/deck/Documents/DarkSoulsIII/",
             "files": []
         },
         {
             "id": 1,
             "name": "Elden Ring",
-            "pc_path": "er_save_path_on_pc",
-            "deck_path": "er_save_path_on_deck",
-            "files": ["toto", "titi", "tata"]
+            "local_path": "E:/NetworkFS/EldenRingSave/",
+            "remote_path": "/home/deck/Documents/EldenRingSave/",
+            "files": []
         }
     ]
 }
