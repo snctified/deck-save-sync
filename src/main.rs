@@ -28,15 +28,15 @@ struct Location {
 }
 
 #[derive(Serialize, Deserialize)]
-struct DeckSaveButler {
+struct RemoteSyncHelper {
     auto_sync: bool,
     remote: String,
     user: String,
     locations: Vec<Location>,
 }
 
-impl DeckSaveButler {
-    pub fn init() -> Result<DeckSaveButler> {
+impl RemoteSyncHelper {
+    pub fn init() -> Result<RemoteSyncHelper> {
         let schema_file = fs::File
             ::open(SCHEMA_FILE_PATH)
             .expect("Should have been able to read the schema file");
@@ -177,10 +177,10 @@ impl DeckSaveButler {
                         )
                     ),
             })?;
-            remote_file.send_eof().unwrap();
-            remote_file.wait_eof().unwrap();
-            remote_file.close().unwrap();
-            remote_file.wait_close().unwrap();
+            remote_file.send_eof()?;
+            remote_file.wait_eof()?;
+            remote_file.close()?;
+            remote_file.wait_close()?;
             println!("Updated {}", local.0.display());
         }
         Ok(())
@@ -188,10 +188,10 @@ impl DeckSaveButler {
 }
 
 fn main() {
-    let butler = DeckSaveButler::init().unwrap();
+    let helper = RemoteSyncHelper::init().unwrap();
 
-    if butler.auto_sync {
-        match butler.sync_locations() {
+    if helper.auto_sync {
+        match helper.sync_locations() {
             Ok(()) => println!("Great success !"),
             Err(e) => println!("While syncing files, {}", e),
         }
