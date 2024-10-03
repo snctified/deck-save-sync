@@ -1,9 +1,8 @@
 #![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
-#![feature(file_set_times)]
+#![feature(extract_if)]
 
 use anyhow::{ anyhow, Context, Result };
-use chrono::{ TimeZone, Utc, DateTime };
-use glob::glob;
+use chrono::{ DateTime, TimeZone, Utc };
 use jsonschema;
 use rpassword::prompt_password;
 use serde::{ Deserialize, Serialize };
@@ -76,17 +75,38 @@ impl RemoteSyncHelper {
     }
 
     fn sync_location(&self, session: &Session, loc: &Location) -> Result<()> {
+        let mut files: Vec<(PathBuf, FileStat)> = vec![];
+        let mut dirs: Vec<(PathBuf, FileStat)> = vec![];
         let handle = session.sftp()?;
-        let files: Vec<(PathBuf, FileStat)> = handle.readdir(&loc.remote_path)?;
 
-        // if loc.files.is_empty() {
-        //     files = handle.readdir(&loc.remote_path)?
-        // } else {
+        if loc.files.is_empty() {
+            files = handle.readdir(&loc.remote_path)?;
+            dirs.append(&mut files.extract_if(|f| f.1.is_dir()).collect());
 
-        // }
+            while dirs.len() != 0 {
+                let mut entries = handle.readdir(dirs[0].0.as_path())?;
+                dirs.append(&mut entries.extract_if(|f| f.1.is_dir()).collect());
+                files.append(&mut entries);
+                dirs.remove(0);
+            }
+        } else {
+            for file in loc.files.as_slice() {
+                let path = loc.remote_path.join(file);
+                let file_opt = match handle.stat(path.as_path()) {
+                    Ok(stat) => Some(stat),
+                    Err(e) => {
+                        println!("Couldnt find file '{}': {}", path.display(), e);
+                        None
+                    }
+                };
+                if file_opt.is_some() {
+                    files.push((path, file_opt.unwrap()));
+                }
+            }
+        }
 
         for remote_file in files {
-            let local_file = loc.local_path.join(remote_file.0.file_name().unwrap());
+            let local_file = loc.local_path.join(remote_file.0.strip_prefix(&loc.remote_path)?);
             let local_date = Utc.timestamp_opt(
                 fs
                     ::metadata(local_file.as_path())?
@@ -100,35 +120,6 @@ impl RemoteSyncHelper {
             self.sync_file(session, (&local_file, local_date), (&remote_file.0, remote_date))?;
         }
 
-        // let deck_path = PathBuf::from(&game.deck_path);
-        // assert!(deck_path.is_dir());
-        // if game.files.is_empty() {
-        //     for entry in glob(pc_path.join("*").to_str().unwrap())? {
-        //         let pc_file = entry?;
-        //         let deck_file = deck_path.join(&pc_file.file_name().unwrap());
-
-        //         self.sync_files(&pc_file, &deck_file)?;
-        //     }
-        // } else {
-        //     for file in game.files {
-        //         let pc_file = pc_path.join(&file);
-        //         if !pc_file.is_file() {
-        //             return Err(anyhow!("File '{}' does not exist", pc_file.display()));
-        //         }
-        //         let deck_file = deck_path.join(&file);
-        //         if !deck_file.is_file() {
-        //             return Err(anyhow!("File '{}' does not exist", deck_file.display()));
-        //         }
-
-        //         self.sync_files(&pc_file, &deck_file).with_context(|| {
-        //             format!(
-        //                 "Failed to sync files {} and {}",
-        //                 pc_file.to_str().unwrap(),
-        //                 deck_file.to_str().unwrap()
-        //             )
-        //         })?;
-        //     }
-        // }
         println!("Synced all files for {}\n", loc.name);
         Ok(())
     }
@@ -139,33 +130,46 @@ impl RemoteSyncHelper {
         local: (&PathBuf, DateTime<Utc>),
         remote: (&PathBuf, DateTime<Utc>)
     ) -> Result<()> {
-            println!("{} - {}", local.1, remote.1);
         if local.1 == remote.1 {
-            println!("{:?} is up-to-date", local.0.file_name())
+            // Last access times are the same
+            println!("{:?} is up-to-date", local.0.file_name());
         } else if local.1 > remote.1 {
             // Remote file is out-of-date
+            let mut contents = Vec::new();
+
+            // Open local file and prepare for buffered reading
             let local_file = fs::File
                 ::open(local.0)
                 .context(format!("Failed to open local file {}", local.0.display()))?;
             let mut buf = BufReader::new(local_file);
-            let mut contents = Vec::new();
+
+            // Get remote file with write access and read contents of local file.
             let mut remote_file = session
                 .scp_send(remote.0, 0o644, buf.read_to_end(&mut contents)?.try_into()?, None)
                 .context(format!("Failed to open remote file {}", remote.0.display()))?;
+
+            // Write contents of local file into remote file 
             remote_file.write_all(&mut contents)?;
+
+            // Properly close channel
             remote_file.send_eof()?;
             remote_file.wait_eof()?;
             remote_file.close()?;
             remote_file.wait_close()?;
+
             println!("Updated {}", remote.0.display());
         } else {
             // Local file is out-of-date
+
+            // Open local file with write access
             let mut local_file = fs::File
                 ::create(local.0)
                 .context(format!("Failed to open local file {}", local.0.display()))?;
             let (mut remote_file, _) = session
                 .scp_recv(remote.0)
                 .context(format!("Failed to open remote file {}", remote.0.display()))?;
+            
+            // Copy remote file into local file
             (match copy(&mut remote_file, &mut local_file) {
                 Ok(_) => Ok(()),
                 Err(e) =>
@@ -177,10 +181,13 @@ impl RemoteSyncHelper {
                         )
                     ),
             })?;
+
+            // Properly close channel
             remote_file.send_eof()?;
             remote_file.wait_eof()?;
             remote_file.close()?;
             remote_file.wait_close()?;
+
             println!("Updated {}", local.0.display());
         }
         Ok(())

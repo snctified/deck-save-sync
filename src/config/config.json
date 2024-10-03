@@ -5,16 +5,16 @@
     "locations": [
         {
             "id": 0,
-            "name": "Dark Souls III",
-            "local_path": "E:/NetworkFS/DS3Save/",
-            "remote_path": "/home/deck/Documents/DarkSoulsIII/",
+            "name": "<location_name>",
+            "local_path": "<local_path>",
+            "remote_path": "<remote_path>",
             "files": []
         },
         {
             "id": 1,
-            "name": "Elden Ring",
-            "local_path": "E:/NetworkFS/EldenRingSave/",
-            "remote_path": "/home/deck/Documents/EldenRingSave/",
+            "name": "<location_name>",
+            "local_path": "<local_path>",
+            "remote_path": "<remote_path>",
             "files": []
         }
     ]
