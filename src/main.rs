@@ -6,7 +6,7 @@ use chrono::{ DateTime, TimeZone, Utc };
 use jsonschema;
 use rpassword::prompt_password;
 use serde::{ Deserialize, Serialize };
-use ssh2::{ FileStat, Session };
+use ssh2::{ FileStat, Session, Sftp };
 use std::fs;
 use std::io::{ copy, BufReader, Read, Write };
 use std::net::TcpStream;
@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use std::time::SystemTime;
 
 const SCHEMA_FILE_PATH: &str = "src/schema/config-schema.json";
-const CONFIG_FILE_PATH: &str = "src/config/config.json";
+const CONFIG_FILE_PATH: &str = "src/config/test-config.json";
 const SSH_PORT: &str = ":22";
 
 #[derive(Serialize, Deserialize)]
@@ -76,19 +76,10 @@ impl RemoteSyncHelper {
 
     fn sync_location(&self, session: &Session, loc: &Location) -> Result<()> {
         let mut files: Vec<(PathBuf, FileStat)> = vec![];
-        let mut dirs: Vec<(PathBuf, FileStat)> = vec![];
         let handle = session.sftp()?;
 
         if loc.files.is_empty() {
-            files = handle.readdir(&loc.remote_path)?;
-            dirs.append(&mut files.extract_if(|f| f.1.is_dir()).collect());
-
-            while dirs.len() != 0 {
-                let mut entries = handle.readdir(dirs[0].0.as_path())?;
-                dirs.append(&mut entries.extract_if(|f| f.1.is_dir()).collect());
-                files.append(&mut entries);
-                dirs.remove(0);
-            }
+            files = self.glob_location(&handle, loc)?;
         } else {
             for file in loc.files.as_slice() {
                 let path = loc.remote_path.join(file);
@@ -132,7 +123,7 @@ impl RemoteSyncHelper {
     ) -> Result<()> {
         if local.1 == remote.1 {
             // Last access times are the same
-            println!("{:?} is up-to-date", local.0.file_name());
+            println!("{:?} is up-to-date", local.0.file_name().unwrap().to_str().unwrap());
         } else if local.1 > remote.1 {
             // Remote file is out-of-date
             let mut contents = Vec::new();
@@ -148,7 +139,7 @@ impl RemoteSyncHelper {
                 .scp_send(remote.0, 0o644, buf.read_to_end(&mut contents)?.try_into()?, None)
                 .context(format!("Failed to open remote file {}", remote.0.display()))?;
 
-            // Write contents of local file into remote file 
+            // Write contents of local file into remote file
             remote_file.write_all(&mut contents)?;
 
             // Properly close channel
@@ -168,7 +159,7 @@ impl RemoteSyncHelper {
             let (mut remote_file, _) = session
                 .scp_recv(remote.0)
                 .context(format!("Failed to open remote file {}", remote.0.display()))?;
-            
+
             // Copy remote file into local file
             (match copy(&mut remote_file, &mut local_file) {
                 Ok(_) => Ok(()),
@@ -191,6 +182,19 @@ impl RemoteSyncHelper {
             println!("Updated {}", local.0.display());
         }
         Ok(())
+    }
+
+    fn glob_location(&self, handle: &Sftp, loc: &Location) -> Result<Vec<(PathBuf, FileStat)>> {
+        let mut files = handle.readdir(&loc.remote_path)?;
+        let mut dirs: Vec<(PathBuf, FileStat)> = files.extract_if(|f| f.1.is_dir()).collect();
+
+        while dirs.len() != 0 {
+            let mut entries = handle.readdir(dirs[0].0.as_path())?;
+            dirs.append(&mut entries.extract_if(|f| f.1.is_dir()).collect());
+            files.append(&mut entries);
+            dirs.remove(0);
+        }
+        Ok(files)
     }
 }
 
