@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 json = "0.12.4"
-jsonschema = "0.21.0"
+jsonschema = "0.22.1"
 serde_json = "1.0.128"
 serde = "1.0.210"
 anyhow = "1.0.89"
@@ -15,3 +15,4 @@ glob = "0.3.1"
 ssh2 = "0.9.4"
 rpassword = "7.3.1"
 chrono = "0.4.38"
+directories = "5.0.1"

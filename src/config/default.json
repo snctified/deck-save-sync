@@ -1,0 +1,13 @@
+{
+    "auto_sync": true,
+    "remote": "Remote hostname or IP address (e.g. steamdeck)",
+    "user": "User for the remote (e.g. deck)",
+    "locations": [
+        {
+            "name": "Location name for display purposes",
+            "local_path": "Location root folder on the local host",
+            "remote_path": "Location root folder on the remote",
+            "files": ["List of files to sync as comma-separated strings", "Leave empty to sync all files"]
+        }
+    ]
+}

@@ -1,8 +1,9 @@
 #![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 #![feature(extract_if)]
 
-use anyhow::{ anyhow, Context, Result };
+use anyhow::{ anyhow, bail, Context, Result };
 use chrono::{ DateTime, TimeZone, Utc };
+use directories::ProjectDirs;
 use jsonschema;
 use rpassword::prompt_password;
 use serde::{ Deserialize, Serialize };
@@ -11,15 +12,13 @@ use std::fs;
 use std::io::{ copy, BufReader, Read, Write };
 use std::net::TcpStream;
 use std::path::PathBuf;
+use std::process::ExitCode;
 use std::time::SystemTime;
 
-const SCHEMA_FILE_PATH: &str = "src/schema/config-schema.json";
-const CONFIG_FILE_PATH: &str = "src/config/test-config.json";
 const SSH_PORT: &str = ":22";
 
 #[derive(Serialize, Deserialize)]
 struct Location {
-    id: u64,
     name: String,
     local_path: PathBuf,
     remote_path: PathBuf,
@@ -36,20 +35,40 @@ struct RemoteSyncHelper {
 
 impl RemoteSyncHelper {
     pub fn init() -> Result<RemoteSyncHelper> {
-        let schema_file = fs::File
-            ::open(SCHEMA_FILE_PATH)
-            .expect("Should have been able to read the schema file");
-        let schema_reader = BufReader::new(schema_file);
-        let schema = serde_json::from_reader(schema_reader).unwrap();
+        let schema_string = include_bytes!("schema/config-schema.json");
+        let schema = serde_json::from_slice(schema_string)?;
 
-        let config_file = fs::File
-            ::open(CONFIG_FILE_PATH)
-            .expect("Should have been able to read the config file");
-        let config_reader = BufReader::new(config_file);
-        let config = serde_json::from_reader(config_reader).unwrap();
+        let config_default = include_bytes!("config/default.json");
 
-        assert!(jsonschema::is_valid(&schema, &config));
-        Ok(serde_json::from_value(config).context("Failed to parse configuration")?)
+        let proj_dirs = ProjectDirs::from("dev", "sanctified", "remote-sync").unwrap();
+        let config_folder = proj_dirs.config_dir();
+        let config_path = &config_folder.join("config.json");
+        // Linux:   /home/<USER>/.config/remote-sync/config.json
+        // Windows: C:\Users\<USER>\AppData\Roaming\sanctified\remote-sync\config.json
+        // macOS:   /Users/<USER>/Library/Application Support/dev.sanctified.remote-sync/config.json
+
+        if let Ok(config_file) = fs::File::open(config_path) {
+            // Read config file
+            let config_reader = BufReader::new(config_file);
+            let config = serde_json::from_reader(config_reader)?;
+            // Validate config against its schema
+            assert!(jsonschema::is_valid(&schema, &config));
+            // Parse json into struct
+            Ok(serde_json::from_value(config).context("Failed to parse configuration")?)
+        } else {
+            // Config file doesn't exist, create a new one from template.
+            fs::create_dir_all(config_folder)?;
+            let mut config_file = fs::File
+                ::create_new(config_path)
+                .expect("Should have been able to create config file");
+            config_file.write_all(config_default)?;
+
+            println!(
+                "No configuration file found in '{}'.\nA default configuration was created, edit it and run remote-sync again.",
+                config_folder.display()
+            );
+            bail!("No configuration file")
+        }
     }
 
     pub fn sync_locations(&self) -> Result<()> {
@@ -67,7 +86,7 @@ impl RemoteSyncHelper {
             match self.sync_location(&session, loc) {
                 Ok(()) => {}
                 Err(e) => {
-                    return Err(anyhow!("Failed to sync {}: {e}", loc.name));
+                    bail!("Failed to sync {}: {e}", loc.name);
                 }
             }
         }
@@ -198,13 +217,24 @@ impl RemoteSyncHelper {
     }
 }
 
-fn main() {
-    let helper = RemoteSyncHelper::init().unwrap();
-
-    if helper.auto_sync {
-        match helper.sync_locations() {
-            Ok(()) => println!("Great success !"),
-            Err(e) => println!("While syncing files, {}", e),
+fn main() -> ExitCode {
+    if let Ok(helper) = RemoteSyncHelper::init() {
+        if helper.auto_sync {
+            match helper.sync_locations() {
+                Ok(()) => {
+                    println!("Great success !");
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    println!("While syncing files, {}", e);
+                    ExitCode::FAILURE
+                }
+            }
+        } else {
+            println!("Nothing to do, autosync is disabled.");
+            ExitCode::SUCCESS
         }
+    } else {
+        ExitCode::FAILURE
     }
 }

@@ -24,10 +24,6 @@
             "items": {
                 "type":"object",
                 "properties": {
-                    "id": {
-                        "type": "integer",
-                        "minimum": 0
-                    },
                     "name": {
                         "description": "Name of the location",
                         "type": "string"
@@ -48,7 +44,7 @@
                         }
                     }
                 },
-                "required": ["id", "name", "local_path", "remote_path", "files"]
+                "required": ["name", "local_path", "remote_path", "files"]
             }
         }
     },
